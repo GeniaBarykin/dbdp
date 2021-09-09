@@ -32,8 +32,7 @@ def users_favorite_hour_reducer(data_map):
             if data_map[user][hour] > number_of_times:
                 fav_hour=hour
                 number_of_times = data_map[user][hour]
-        output[user] = { hour : number_of_times}
-    
+        output[user] = { "favorite_hour" : fav_hour, "listened_times" : number_of_times}
     return output
 
 # Combines data of favorite hour with data from people table
@@ -44,8 +43,8 @@ def user_info_with_favorite_hour(fav_hour_data):
     for line in input_file.values:
         person_id,first_name,last_name,email,gender,country,dob = line
         output.append({"first_name" :first_name, "last_name" : last_name,
-                       "favorite_hour" : fav_hour_data[person_id],
-                       "songs listened" : list(fav_hour_data[person_id].values())[0]}) 
+                       "favorite_hour" : fav_hour_data[person_id]["favorite_hour"],
+                       "times_listened" : fav_hour_data[person_id]["listened_times"]})
     return output
 
 

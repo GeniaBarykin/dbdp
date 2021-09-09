@@ -50,22 +50,25 @@ def songs_per_time_period_reducer(data_map, size):
 
 
 # Combines data of reducer with data from songs table
-def user_info_with_favorite_hour():
+def top_songs_info(songs_per_time_period):
     output = []
-    input_file = pd.read_csv(SONG_FILEPATH,header=0)
+    input_file = pd.read_csv(SONG_FILEPATH, header=0)
     # Output in a JSON array as there are several data columns
-    print(input_file)
-    # for line in input_file.values:
-    #     track_id,artist,title,lengthSeconds = line
-    #     output.append({"first_name" :first_name, "last_name" : last_name,
-    #                    "favorite_hour" : fav_hour_data[person_id],
-    #                    "songs listened" : list(fav_hour_data[person_id].values())[0]}) 
+    merged_songs_per_time_period = {}
+    for line in songs_per_time_period:
+        merged_songs_per_time_period.update(line)    
+    for line in input_file.values:
+        track_id,artist,title,lengthSeconds = line
+        if track_id in merged_songs_per_time_period:
+            output.append({"title" :title, "Artist" : artist,
+                       "times_played" : merged_songs_per_time_period[track_id]}) 
     return output
+    # Songtitle, ArtistName, NumberOfTimesPlayed
 
 START_HOUR = 7
 END_HOUR = 8
 OUTPUT_SIZE = 5               
-# print(songs_per_time_period_reducer(songs_per_time_period_map(START_HOUR,END_HOUR), OUTPUT_SIZE))
+# print()
 input_file = pd.read_csv("data/tracks.csv", header=0)
     # Output in a JSON array as there are several data columns
-print(input_file)
+print(top_songs_info(songs_per_time_period_reducer(songs_per_time_period_map(START_HOUR,END_HOUR), OUTPUT_SIZE)))
