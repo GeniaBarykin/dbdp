@@ -1,29 +1,54 @@
-import pandas as pd 
-import datetime as dt
+import csv
+from datetime import datetime as dt
+import sys
+import operator
+from map_reduce_lib import *
 
 HISTORY_FILEPATH = "data/playhistory.csv"
-
-def songs_listened_for_date(year, month):
-    input_file = pd.read_csv(HISTORY_FILEPATH,header=0,parse_dates=["datetime"])
-    output = {}
-    #Mapping
-    for line in input_file.values:
-        track_id,user,datetime=line
-        #reducing 
-        # just a simple check on data integrity of datetime column
-        if isinstance(datetime, dt.datetime):
-            if datetime.year == year and datetime.month == month:
-                if not track_id in output:
-                    output[track_id] = 1
-                else:
-                    output[track_id] = output[track_id]+1     
-    sorted_keys_list = list(output.keys())
-    sorted_keys_list.sort()        
-    sorted_output = []
-    for key in sorted_keys_list:
-        sorted_output.append({key :output[key]})
-    return sorted_output
-
 YEAR = 2015
 MONTH = 3
-print(songs_listened_for_date(YEAR, MONTH))
+
+def map_lines_to_words(line):
+    """ Map function for the word count job. 
+    Splits line into words, removes low information words (i.e. stopwords) and outputs (key, 1).
+    """
+    process_print('is processing `%s`' % line)
+
+    output = []
+    track_id,user,datetime=line
+    
+    dateObj = dt.strptime(datetime, "%Y-%m-%d %H:%M:%S")
+    if dateObj.year == YEAR and dateObj.month == MONTH:
+        output.append((track_id, 1))
+       
+    return output
+
+def reduce_word_count(key_value_item):
+    """ Reduce function for the word count job. 
+    Converts partitioned data (key, [value]) to a summary of form (key, value).
+    """
+    track_id, occurrences = key_value_item
+    return (track_id, sum(occurrences))
+
+if __name__ == '__main__':
+   
+    # Read data into separate lines.
+    with open (HISTORY_FILEPATH, 'r') as input_file:
+        tracks_reader = csv.reader(input_file, delimiter=',')
+        next(tracks_reader, None)  # skip the headers
+        tracks = list(tracks_reader)
+    
+        # Execute MapReduce job in parallel.
+        map_reduce = MapReduce(map_lines_to_words, reduce_word_count, 8)
+        date_counts = map_reduce(tracks, debug=True)
+        print('Songs played on ' + str(MONTH) + '/'+ str(YEAR) )
+        for track_id, played_times in date_counts:
+            print("Song id " + track_id + ", played times:"+ str(played_times))
+    # # Sort the result in reverse order
+    # word_counts.sort(key=operator.itemgetter(1))
+    # word_counts.reverse()
+    # top20 = word_counts[:20]
+    
+    # print('Top 20 words by frequency:')
+    # for word, count in top20:
+    #     print('{:10s}: {}'.format(word, count))

@@ -9,7 +9,7 @@ def songs_per_time_period_map(start_hour, end_hour):
     data_map = {}
     for line in input_file.values:
         track_id,user,datetime=line
-        # First reducer and hek on data integrity of datetime column
+        # First reducer and check on data integrity of datetime column
         if isinstance(datetime, dt.datetime) and datetime.hour >= start_hour and datetime.hour < end_hour:            
             if not track_id in data_map:
                 data_map[track_id] = 1
