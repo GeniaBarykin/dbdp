@@ -1,74 +1,55 @@
-import pandas as pd 
-import datetime as dt
+import csv
+from datetime import datetime as dt
+import sys
+import operator
 
-SONG_FILEPATH = "data/tracks.csv"
-HISTORY_FILEPATH = "data/playhistory.csv"
-
-def songs_per_time_period_map(start_hour, end_hour):
-    input_file = pd.read_csv(HISTORY_FILEPATH,header=0,parse_dates=["datetime"])
-    data_map = {}
-    for line in input_file.values:
-        track_id,user,datetime=line
-        # First reducer and check on data integrity of datetime column
-        if isinstance(datetime, dt.datetime) and datetime.hour >= start_hour and datetime.hour < end_hour:            
-            if not track_id in data_map:
-                data_map[track_id] = 1
-            else:
-                data_map[track_id] += 1
-    return data_map
+sys.path.append("../")
+from map_reduce_lib import *
 
 
-def songs_per_time_period_reducer(data_map, size):   
+def map_line_to_song_between_7_8(line):
     output = []
-    lowest_val = 0
-    highest_val = 0
-    for i in range(size):
-        output.append({str(i+1): 0})
-    for song in data_map:
-        # Merge algorithm 
-        if data_map[song] > lowest_val:
-            output.pop(0)    
-            # Put highest value on top   
-            if data_map[song] >= highest_val:
-                output.append({song:data_map[song]})
-                highest_val=list(output[size-1].values())[0]
-            else:
-                start_value=list(output[0].values())[0]
-                # Put lowest value on bottom
-                if data_map[song] < start_value:
-                    output.insert(0, {song:data_map[song]})
-                    lowest_val=list(output[0].values())[0]
-                # Or find a place withing the list keeping it sorted
-                else:
-                    lowest_val=start_value
-                    i = 1
-                    while data_map[song] > start_value:
-                        start_value=list(output[i].values())[0]
-                        i+=1
-                    output.insert(i, {song:data_map[song]})            
+
+    track_id, user, datetime = line
+    dateObj = dt.strptime(datetime, "%Y-%m-%d %H:%M:%S")
+
+    if dateObj.hour == 7:
+        output.append((track_id, 1))
+    print(output)
     return output
 
+def reduce_song_count(input):
 
-# Combines data of reducer with data from songs table
-def top_songs_info(songs_per_time_period):
-    output = []
-    input_file = pd.read_csv(SONG_FILEPATH, header=0)
-    # Output in a JSON array as there are several data columns
-    merged_songs_per_time_period = {}
-    for line in songs_per_time_period:
-        merged_songs_per_time_period.update(line)    
-    for line in input_file.values:
-        track_id,artist,title,lengthSeconds = line
-        if track_id in merged_songs_per_time_period:
-            output.append({"title" :title, "Artist" : artist,
-                       "times_played" : merged_songs_per_time_period[track_id]}) 
-    return output
-    # Songtitle, ArtistName, NumberOfTimesPlayed
+    track_id, occurrences = input
 
-START_HOUR = 7
-END_HOUR = 8
-OUTPUT_SIZE = 5               
-# print()
-input_file = pd.read_csv("data/tracks.csv", header=0)
-    # Output in a JSON array as there are several data columns
-print(top_songs_info(songs_per_time_period_reducer(songs_per_time_period_map(START_HOUR,END_HOUR), OUTPUT_SIZE)))
+    return (track_id, sum(occurrences))
+
+
+if __name__ == '__main__':
+    # Read data into separate lines.
+    with open('data/playhistory.csv') as file_input:
+        playhistory = csv.reader(file_input, delimiter=',')
+        next(playhistory, None)  # skip the headers
+        lines = list(playhistory)
+
+        # Execute MapReduce job in parallel.
+        map_reduce = MapReduce(map_line_to_song_between_7_8, reduce_song_count, 8)
+        song_counts = map_reduce(lines, debug=True)
+
+        # Sort the result in reverse order
+        song_counts.sort(key=operator.itemgetter(1))
+        song_counts.reverse()
+        top5 = song_counts[:5]
+
+        with open('data/tracks.csv', "r", encoding="UTF-8") as file_input:
+            tracks_reader = csv.reader(file_input, delimiter=',')
+            next(tracks_reader, None)  # skip the headers
+            tracks = list(tracks_reader)
+
+            print('Top 5 songs between 7AM and 8AM:')
+            for track_id, count in top5:
+
+                for t_id, t_artist, t_title, t_length in tracks:
+                    if t_id == track_id:
+                        # song_title perfored by artist_name: number_of_times_played
+                        print(t_title + " performed by " + t_artist + ": " + str(count))
