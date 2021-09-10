@@ -1,36 +1,57 @@
 import csv
 from datetime import datetime as dt
-import sys
 import operator
 
-sys.path.append("../")
 from map_reduce_lib import *
 
 
 def map_line_to_song_between_7_8(line):
     output = []
 
-    track_id, user, datetime = line
-    dateObj = dt.strptime(datetime, "%Y-%m-%d %H:%M:%S")
+    if len(line) == 3: # This means the line contains playhistory information.
+        track_id, user, datetime = line
+        dateObj = dt.strptime(datetime, "%Y-%m-%d %H:%M:%S")
 
-    if dateObj.hour == 7:
-        output.append((track_id, 1))
-    print(output)
-    return output
+        if dateObj.hour == 7:
+            output.append((track_id, 1))
 
-def reduce_song_count(input):
+        return output
 
-    track_id, occurrences = input
+    else: # This means the line contains track information.
+        track_id, artist, title, lengthSeconds = line
+        output.append((track_id, (track_id, artist, title, lengthSeconds)))
 
-    return (track_id, sum(occurrences))
+        return output
+
+
+def reduce_song_count(key_value_item):
+
+
+    track_id, value = key_value_item
+
+    sum = 0
+    track_info = None
+
+    for v in value:
+        if isinstance(v, int):
+            sum += v
+        else:
+            track_info = v
+
+    return (track_info, sum)
 
 
 if __name__ == '__main__':
     # Read data into separate lines.
-    with open('data/playhistory.csv') as file_input:
-        playhistory = csv.reader(file_input, delimiter=',')
+    with open('data/playhistory.csv') as ph_input, open('data/tracks.csv', "r", encoding="UTF-8") as t_input:
+        playhistory = csv.reader(ph_input, delimiter=',')
         next(playhistory, None)  # skip the headers
+        tracks = csv.reader(t_input, delimiter=',')
+        next(tracks, None)  # skip the headers
+        
+        # read in all the data
         lines = list(playhistory)
+        lines.extend(list(tracks))
 
         # Execute MapReduce job in parallel.
         map_reduce = MapReduce(map_line_to_song_between_7_8, reduce_song_count, 8)
@@ -41,15 +62,6 @@ if __name__ == '__main__':
         song_counts.reverse()
         top5 = song_counts[:5]
 
-        with open('data/tracks.csv', "r", encoding="UTF-8") as file_input:
-            tracks_reader = csv.reader(file_input, delimiter=',')
-            next(tracks_reader, None)  # skip the headers
-            tracks = list(tracks_reader)
-
-            print('Top 5 songs between 7AM and 8AM:')
-            for track_id, count in top5:
-
-                for t_id, t_artist, t_title, t_length in tracks:
-                    if t_id == track_id:
-                        # song_title perfored by artist_name: number_of_times_played
-                        print(t_title + " performed by " + t_artist + ": " + str(count))
+        for track_info, count in top5:
+            # song_title perfored by artist_name: number_of_times_played
+            print(track_info[2] + " performed by " + track_info[1] + ": " + str(count))
