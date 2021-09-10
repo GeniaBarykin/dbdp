@@ -40,6 +40,17 @@ def reduce_song_count(key_value_item):
 
     return (track_info, sum)
 
+def map_song_count_to_song(line):
+    output = []
+
+    track_info, song_count = line
+
+    output.append((song_count, track_info))
+
+    return output
+
+def reduce_sort_song_count(input):
+    return input
 
 if __name__ == '__main__':
     # Read data into separate lines.
@@ -58,10 +69,18 @@ if __name__ == '__main__':
         song_counts = map_reduce(lines, debug=True)
 
         # Sort the result in reverse order
-        song_counts.sort(key=operator.itemgetter(1))
-        song_counts.reverse()
-        top5 = song_counts[:5]
+        sort_song_count = MapReduce(map_song_count_to_song, reduce_sort_song_count, 8)
+        sorted_song_count = sort_song_count(song_counts, debug=True)
+        
+        sorted_song_count.sort(key=operator.itemgetter(0))
+        sorted_song_count.reverse()
 
-        for track_info, count in top5:
-            # song_title perfored by artist_name: number_of_times_played
-            print(track_info[2] + " performed by " + track_info[1] + ": " + str(count))
+        
+        max_printed_lines = 5
+
+        for count, tracks in sorted_song_count:
+            for track in tracks[0:max_printed_lines]:
+                # song_title perfored by artist_name: number_of_times_played
+                print(track[2] + " performed by " + track[1] + ": " + str(count))
+
+            max_printed_lines = max_printed_lines - len(track) if len(track) <= max_printed_lines else 0
