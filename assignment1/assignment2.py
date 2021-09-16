@@ -1,7 +1,5 @@
 import csv
 from datetime import datetime as dt
-import sys
-import operator
 from map_reduce_lib import *
 
 PEOPLE_FILEPATH = "data/people.csv"
