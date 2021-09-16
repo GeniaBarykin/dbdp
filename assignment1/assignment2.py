@@ -6,8 +6,6 @@ from map_reduce_lib import *
 
 PEOPLE_FILEPATH = "data/people.csv"
 HISTORY_FILEPATH = "data/playhistory.csv"
-YEAR = 2015
-MONTH = 3
 
 def mapper(line):
     """ Map function to get tracks for the certain date
@@ -44,21 +42,21 @@ def reducer(key_value_item):
         if user_hours[key]==max_listened_value:
             fav_hour = key
             break       
-    return (user_id,user_info.pop(),user_info.pop(),fav_hour, max_listened_value)
+    return (user_info.pop(),user_info.pop(),fav_hour, max_listened_value)
 
 if __name__ == '__main__':
     data=[]
     # Read data into separate lines.
-    with open (HISTORY_FILEPATH, 'r') as history_input_file:
+    with open (HISTORY_FILEPATH, 'r') as history_input_file, open (PEOPLE_FILEPATH, 'r') as people_input_file:
         history_reader = csv.reader(history_input_file, delimiter=',')
         next(history_reader, None)  # skip the headers
-        data = list(history_reader)
-        with open (PEOPLE_FILEPATH, 'r') as people_input_file:
-            people_reader = csv.reader(people_input_file, delimiter=',')
-            next(people_reader, None)  # skip the headers
-            data+=list(people_reader)            
-            # Execute MapReduce job in parallel.
-            
-            map_reduce = MapReduce(mapper, reducer, 8)
-            data = map_reduce(data, debug=True)
-    print(data)
+        data = list(history_reader)        
+        people_reader = csv.reader(people_input_file, delimiter=',')
+        next(people_reader, None)  # skip the headers
+        data+=list(people_reader)            
+        # Execute MapReduce job in parallel.
+        
+        map_reduce = MapReduce(mapper, reducer, 8)
+        data = map_reduce(data, debug=True)
+    for line in data:
+        print(line)
