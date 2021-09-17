@@ -4,8 +4,10 @@ from map_reduce_lib import *
 
 DATA_DIRECTORY = "invertedIndexInput"
 
+def map_line_to_words(kv):
 
-def map(line):
+    file_name, line = kv
+
     output = []
 
     line_number = line.split('\t')[0]
@@ -24,58 +26,32 @@ def map(line):
     for word in line_text.split():
 
         if word not in STOP_WORDS:
-            output.append((word, line_number))
+            output.append((word, f"{file_name}@{line_number}"))
 
     return output
 
 
 def reduce(kv):
-    return kv
-
-
-def map2(input):
-    story, inverted_index = input
-
-    output = []
-
-    for word, line_numbers in inverted_index:
-        for line_number in line_numbers:
-            output.append((word, f"{story}@{line_number}"))
-
-    return output
-
-
-def reduce2(kv):
-    return kv
-
+    word, locations = kv
+    return f"{word} \t { ','.join(locations)}\n"
 
 if __name__ == '__main__':
 
-    temp_indices = []
-
+    # Combine all the lines
+    lines = []
     for filename in os.listdir(DATA_DIRECTORY):
         with open(DATA_DIRECTORY + "/" + filename, 'r') as f:
+            file_lines = list(f.readlines())
+            lines.extend(map(lambda line: (filename, line), file_lines))
 
-            print("Inverting file: {}".format(filename))
-
-            lines = list(f.readlines())
-
-            lines.append(filename)
-
-            # print(lines)
-            map_reduce = MapReduce(map, reduce, 8)
-            temp_indices.append((filename, map_reduce(lines, debug=True)))
-
-    print("Combining everything...")
-
-    map_reduce = MapReduce(map2, reduce2, 8)
-    inverted_index = map_reduce(temp_indices, debug=True)
+    # Call map_reduce to create the inverted index
+    map_reduce = MapReduce(map_line_to_words, reduce, 8)
+    output = map_reduce(lines, debug=True)
 
     f = open("inverted_index.txt", "w+")
 
-    for word, locations in inverted_index:
-        locations_string = ','.join(locations)
-        f.write(f"{word} \t {locations_string}\n")
+    for entry in output:
+        f.write(entry)
 
     f.close()
 
