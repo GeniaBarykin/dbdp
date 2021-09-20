@@ -15,7 +15,7 @@ def map_lines_to_words(line):
 
     output = []
     track_id,user,datetime=line
-    
+    print(datetime)
     dateObj = dt.strptime(datetime, "%Y-%m-%d %H:%M:%S")
     if dateObj.year == YEAR and dateObj.month == MONTH:
         output.append((track_id, 1))
