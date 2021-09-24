@@ -52,6 +52,7 @@ if __name__ == '__main__':
         data=f.readlines()
         map_reduce = MapReduce(mapper, reducer, 16)
         data = map_reduce(data, debug=True)
-        print(data)
+    for line in data:
+        print(line)    
             
 

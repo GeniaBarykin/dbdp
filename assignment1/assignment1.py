@@ -40,6 +40,11 @@ if __name__ == '__main__':
         # Execute MapReduce job in parallel.
         map_reduce = MapReduce(map_lines_to_words, reduce_word_count, 8)
         date_counts = map_reduce(tracks, debug=True)
+        # take first element for sort
+        def takeSecond(elem):
+            return elem[0]
+
+        date_counts.sort(key=takeSecond)
         # Print result
         print('Songs played on ' + str(MONTH) + '/'+ str(YEAR) )
         for track_id, played_times in date_counts:
